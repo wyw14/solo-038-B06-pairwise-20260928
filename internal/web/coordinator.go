@@ -25,8 +25,8 @@ func (coordinator *Coordinator) Prepare(owner string, jobGeneration, rollGenerat
 	return coordinator.state.Thread(owner)
 }
 
-func (coordinator *Coordinator) Permit(readings []sensor.Reading, tolerance float64, now time.Time) (TensionPermit, error) {
-	return BuildTensionPermit(readings, tolerance, now)
+func (coordinator *Coordinator) Permit(readings []sensor.Reading, kind sensor.ReadingKind, tolerance float64, now time.Time) (TensionPermit, error) {
+	return BuildTensionPermit(readings, kind, tolerance, now)
 }
 
 func (coordinator *Coordinator) Advance(owner string, meters float64, permit TensionPermit, now time.Time) error {

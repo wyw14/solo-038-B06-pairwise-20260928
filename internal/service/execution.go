@@ -91,21 +91,30 @@ func (runtime *Runtime) feedWebOperation(ctx context.Context, current model.Job)
 	now := time.Now()
 	forceA := sensor.Reading{ID: string(model.NewOperationID()), Kind: sensor.ReadingForce, Source: "load-cell-a", Origin: "load-cell-a", Value: 90, Unit: "N", ObservedAt: now}
 	forceB := sensor.Reading{ID: string(model.NewOperationID()), Kind: sensor.ReadingForce, Source: "load-cell-b", Origin: "load-cell-b", Value: 91, Unit: "N", ObservedAt: now}
-	tension, err := sensor.DeriveTension(forceA, 10, string(model.NewOperationID()))
+	// Each load cell independently yields a tension over the same web width;
+	// the two derived values have distinct root origins, so they remain valid
+	// second sources for one another.
+	tensionA, err := sensor.DeriveTension(forceA, 10, string(model.NewOperationID()))
+	if err != nil {
+		return err
+	}
+	tensionB, err := sensor.DeriveTension(forceB, 10, string(model.NewOperationID()))
 	if err != nil {
 		return err
 	}
 	speed := sensor.Reading{ID: string(model.NewOperationID()), Kind: sensor.ReadingSpeed, Source: "traction-encoder", Origin: "traction-encoder", Value: 8, Unit: "m/s", ObservedAt: now}
 	runtime.sensors.PutReading(forceA)
 	runtime.sensors.PutReading(forceB)
-	runtime.sensors.PutReading(tension)
+	runtime.sensors.PutReading(tensionA)
+	runtime.sensors.PutReading(tensionB)
 	runtime.sensors.PutReading(speed)
 	readings := runtime.sensors.CurrentReadings(now, time.Second)
-	permit, err := runtime.webControl.Permit([]sensor.Reading{forceA, forceB}, runtime.config.RegisterTolerance, now)
+	tensionReadings := []sensor.Reading{tensionA, tensionB}
+	permit, err := runtime.webControl.Permit(tensionReadings, sensor.ReadingTension, runtime.config.RegisterTolerance, now)
 	if err != nil {
 		return err
 	}
-	status, err := unwind.EvaluateTension([]sensor.Reading{forceA, forceB}, 2)
+	status, err := unwind.EvaluateTension(tensionReadings, sensor.ReadingTension, 2)
 	if err != nil {
 		return err
 	}
