@@ -22,8 +22,19 @@ func EvaluateTension(readings []sensor.Reading, tolerance float64) (TensionStatu
 		return TensionStatus{}, err
 	}
 	status := TensionStatus{Permitted: agree, Votes: votes}
-	if len(votes) < 2 {
-		status.Reason = "fewer than two independent sources"
+	originsPerKind := map[sensor.ReadingKind]int{}
+	for _, vote := range votes {
+		originsPerKind[vote.Kind]++
+	}
+	comparable := false
+	for _, origins := range originsPerKind {
+		if origins >= 2 {
+			comparable = true
+			break
+		}
+	}
+	if !comparable {
+		status.Reason = "fewer than two independent sources of the same kind"
 	} else if !agree {
 		status.Reason = fmt.Sprintf("source spread exceeds %.3f", tolerance)
 	} else {

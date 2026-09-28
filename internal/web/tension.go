@@ -24,12 +24,16 @@ func BuildTensionPermit(readings []sensor.Reading, tolerance float64, now time.T
 	if err != nil {
 		return TensionPermit{}, err
 	}
-	permit := TensionPermit{Allowed: agree && len(votes) >= 2, IssuedAt: now.UTC(), ExpiresAt: now.Add(2 * time.Second).UTC()}
+	permit := TensionPermit{Allowed: agree, IssuedAt: now.UTC(), ExpiresAt: now.Add(2 * time.Second).UTC()}
+	seen := map[string]bool{}
 	for _, vote := range votes {
-		permit.Origins = append(permit.Origins, vote.Origin)
+		if !seen[vote.Origin] {
+			seen[vote.Origin] = true
+			permit.Origins = append(permit.Origins, vote.Origin)
+		}
 	}
 	if !permit.Allowed {
-		permit.Reason = fmt.Sprintf("need two agreeing independent origins, received %d", len(votes))
+		permit.Reason = fmt.Sprintf("need two independent origins of the same kind to agree within %.3f, received %d votes", tolerance, len(votes))
 	}
 	return permit, nil
 }
